@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en-US" dir="ltr">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>mmaekr</title>
+
+    <link rel="stylesheet" href="/css/main.css">
+
+
+      <script src="/js/main.js"></script>
+
+
+</head>
+<body>
+  <header>
+    <h1 class="center">mmaekr</h1>
+<ul class="center" style="list-style: none; padding: 15px; display: flex; width: 55%;">
+  <li class="center"><a href="/about">about</a> </li>
+  <li class="center">░▒▓▒░</li>
+  <li class="center"><a href="/">posts</a></li>
+  <li class="center">░▒▓▒░</li>
+  <li class="center"><a href="https://github.com/mmaekr">git</a></li>
+</ul>
+
+  </header>
+  <main>
+    
+  <h1>Understanding the TLBs</h1>
+
+  
+  
+  
+    <time datetime="2025-01-22T20:03:12-05:00">January 22, 2025</time>
+  
+
+  <p>// TODO i can&rsquo;t write a fucking intro
+Translation lookaside buffers are critical to your CPU&rsquo;s performance and I wanted to do a deep dive into how they work.
+<br/>
+<br/></p>
+<h3 id="why-tlbs-exist">why TLBs exist</h3>
+<p>In the beginning everything was just physical memory. You load from a particular address, you get the data stored there.</p>
+<p>// TODO talk about how we got to virtual memory</p>
+<p>// TODO Assume 4k pages</p>
+<p>Let&rsquo;s think about the following ARM assembly program.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-asm" data-lang="asm"><span class="line"><span class="cl"><span class="err">0</span><span class="nf">x10000</span>	<span class="no">mov</span> <span class="no">x0</span><span class="p">,</span> <span class="c1">#0x1234
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="err">0</span><span class="nf">x10004</span>	<span class="no">mov</span> <span class="no">x1</span><span class="p">,</span> <span class="c1">#0x5678
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="err">0</span><span class="nf">x10008</span>	<span class="no">add</span> <span class="no">x2</span><span class="p">,</span> <span class="no">x0</span><span class="p">,</span> <span class="no">x1</span>
+</span></span><span class="line"><span class="cl"><span class="err">0</span><span class="nf">x1000c</span>	<span class="no">mov</span> <span class="no">x3</span><span class="p">,</span> <span class="c1">#0x4000
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="err">0</span><span class="nf">x10010</span>	<span class="no">str</span> <span class="no">x2</span><span class="p">,</span> <span class="p">[</span><span class="no">x3</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="err">0</span><span class="nf">x10014</span>	<span class="no">ret</span>
+</span></span></code></pre></div><p>Imagine our hypothetical CPU tries to execute this program without a TLB (or caches). We try to load the virtual address <code>0x10000</code> to try and get the first instruction. We do a page table walk starting at the physical address in <code>TTBR0_EL1</code>. This walk is going to require multiple memory accesses since we have multiple levels of page tables (usually 4.) This walk will cost roughly <a href="https://stackoverflow.com/a/3142818">400ns</a>, which from the eyes of our CPU is extremely costly. And this was just to get the physical address for <code>0x10000</code>, we haven&rsquo;t even loaded that physical address to get the instruction yet! Once we do fetch the instruction after waiting ~100ns, we can finally execute one <code>mov</code> instruction. Now we try to load the address <code>0x10004</code> to get the next instruction. Time for another page table walk! Next, we&rsquo;ll try to load the address <code>0x10008</code> and you get the idea. We will have to do a page table walk every time we try to fetch an instruction.</p>
+<p>It is obvious that without caching these virtual to physical translations, our CPU will spend a majority of its time performing page table walks rather than executing the actual instructions.
+<br/>
+<br/></p>
+<h3 id="baby-steps">baby steps</h3>
+<p>Let&rsquo;s add the most simple TLB: one that caches the latest virtual to physical translation. Starting from the beginning of our previous program, we will try to load the virtual address <code>0x10000</code> and perform a page table walk. We will still have a ~400ns penalty for this first walk. But for our next load of <code>0x10004</code>, we will first check our TLB and see that our we have the translation of this page already cached and use it. We have just shaved off ~400ns of memory accesses and we are blazing through our program now.</p>
+<p>But we will run into slowdowns after executing the instruction at <code>0x10010</code>. We perform a store operation to the virtual address <code>0x4000</code>. This virtual page&rsquo;s translation is not in our TLB, which means we will need to do a page table walk. We will overwrite the old <code>0x10000</code> to <code>p</code> entry in our TLB to <code>0x4000</code> to <code>p2</code>. But now when we try to fetch the instruction at <code>0x10014</code>, we find that its translation is not in the cache, which means another page table walk. We can see with multiple pages in use, we are hitting  slowdowns. How can we fix this?</p>
+<br/>
+<br/>
+<h3 id="a-add-more-entries">a. add more entries</h3>
+<p>The most obvious solution is to just add more space to our TLB so we can store more entries. But more entries means more problems. We can&rsquo;t have infinite entries in our TLB.</p>
+<ul>
+<li>can&rsquo;t have infinite entries, too much and we won&rsquo;t find in reasonable time</li>
+<li>which slot does an entry go into?</li>
+<li>which entries deserve to leave? managing LRU is complicated</li>
+</ul>
+<br/>
+<br/>
+<h3 id="b-separate-entries-for-instructions-and-data">b. separate entries for instructions and data</h3>
+<br/>
+<br/>
+<h3 id="b-separate-entries-for-instructions-and-data-1">b. separate entries for instructions and data</h3>
+
+  
+
+
+  </main>
+  <footer>
+    <p>Copyright 2025. All rights reserved.</p>
+
+  </footer>
+</body>
+</html>

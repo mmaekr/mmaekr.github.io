@@ -6,8 +6,15 @@
     <description>Recent content on mmaekr</description>
     <generator>Hugo</generator>
     <language>en-US</language>
-    <lastBuildDate>Wed, 12 Jun 2024 20:03:12 -0500</lastBuildDate>
+    <lastBuildDate>Wed, 08 Oct 2025 20:03:12 -0500</lastBuildDate>
     <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Scraping the SmarTrip Website to Automate My Timesheets</title>
+      <link>http://localhost:1313/scraping-the-smartrip-website-to-automate-my-timesheets/</link>
+      <pubDate>Wed, 08 Oct 2025 20:03:12 -0500</pubDate>
+      <guid>http://localhost:1313/scraping-the-smartrip-website-to-automate-my-timesheets/</guid>
+      <description>&lt;p&gt;For my job, I need to submit timesheets at the end of every week. Sometimes I forget to submit them and by Monday the people in charge of finance at the company get angry at me. Since I moved to DC, I have been trying my best to live a car-free lifestyle. This means taking the train and bus to work every day. I recently had the idea of trying to pull the trip data from my Metro card and use it to determine what times I arrive and depart work for that day programatically. That way I don&amp;rsquo;t have to sit down every Sunday and manually calculate how long I worked based on my trips.&lt;/p&gt;</description>
+    </item>
     <item>
       <title>Making a Battlebit Remastered Minimap with Packet Sniffing</title>
       <link>http://localhost:1313/making-a-battlebit-remastered-minimap-with-packet-sniffing/</link>

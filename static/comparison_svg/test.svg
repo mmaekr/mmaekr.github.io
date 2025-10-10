@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" 
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 400 300">
+
+    <image
+        id="image_a"
+        x="50"
+        y="50"
+        width="300"
+        height="200"
+        href="cat_a.jpg"
+        preserveAspectRatio="xMidYMid meet"/>
+
+    <image
+        id="image_b"
+        x="50"
+        y="50"
+        width="300"
+        height="200"
+        href="cat_b.jpg"
+        preserveAspectRatio="xMidYMid meet"
+        clip-path="url(#myClip)"/>
+
+  <rect id="outer-split" x="200" y="50" width="20" height="200" fill="#1b1b1b" cursor="ew-resize"/>
+  <clipPath id="myClip">
+    <rect id="inner-split" x="200" y="0" width="2000" height="300" fill="#1b1b1b" cursor="move"/>
+  </clipPath>
+  
+  <script><![CDATA[
+    let selected = false;
+    let image_a = document.querySelector('#image_a');
+    let image_b = document.querySelector('#image_b');
+    let rect = document.querySelector('rect');
+    let clip_rect = document.querySelector('clipPath rect');
+    let svg = document.querySelector('svg');
+    let offset = {x: 0, y: 0};
+    let current_x;
+
+    rect.addEventListener('mousedown', startDrag);
+    svg.addEventListener('mousemove', drag);
+    svg.addEventListener('mouseup', endDrag);
+
+    function getMousePosition(evt) {
+        let CTM = svg.getScreenCTM();
+        return {
+            x: (evt.clientX - CTM.e) / CTM.a,
+            y: (evt.clientY - CTM.f) / CTM.d
+        };
+    }
+
+    function startDrag(evt) {
+        selected = true;
+        let mousePos = getMousePosition(evt);
+        offset.x = mousePos.x - parseFloat(rect.getAttribute('x'));
+        offset.y = mousePos.y - parseFloat(rect.getAttribute('y'));
+    }
+
+    function drag(evt) {
+        if (selected) {
+            evt.preventDefault();
+            let mousePos = getMousePosition(evt);
+            let bounds = image_a.getBBox();
+            let rect_bounds = rect.getBBox();
+
+            console.log(mousePos);
+            console.log(bounds);
+            console.log(rect_bounds);
+
+            current_x = mousePos.x - offset.x;
+            current_x = Math.min(Math.max(bounds.x, current_x), bounds.x+bounds.width-rect_bounds.width);
+            // console.log("current x:" + current_x);
+            // current_x = Math.min(Math.max(bounds.width, current_x), bounds.right);
+            // console.log("bounds left:" + bounds.width);
+            // console.log("bounds right:" + bounds.right);
+            // console.log("new x:" + current_x);
+
+
+            rect.setAttribute('x', current_x);
+            clip_rect.setAttribute('x', current_x);
+        }
+    }
+
+    function endDrag() {
+        selected = false;
+    }
+  ]]></script>
+</svg>
